@@ -17,7 +17,7 @@
 #define THRESHOLD_LOW 500
 #define THRESHOLD_HIGH 700
 
-#define FLASH_PERIOD 5000
+#define FLASH_PERIOD 3000
 #define BREW_TIME 540000
 
 #define MAKER_OFF 0
@@ -101,10 +101,10 @@ bool hasFlashed (uint32_t t) {
 }
 
 void handleTick () {
-  if (hasBeenOffFor(FLASH_PERIOD) && makerState != MAKER_OFF) {
+  if (hasBeenOffFor(2*FLASH_PERIOD) && makerState != MAKER_OFF) {
     makerState = MAKER_OFF;
     handleMakerOff();
-  } else if (hasBeenOnFor(FLASH_PERIOD) && !hasBeenOnFor(BREW_TIME) && makerState == MAKER_OFF) {
+  } else if (hasBeenOnFor(2*FLASH_PERIOD) && !hasBeenOnFor(BREW_TIME) && makerState == MAKER_OFF) {
     makerState = MAKER_ON;
     handleMakerOn();
   } else if (hasBeenOnFor(BREW_TIME) && makerState == MAKER_ON) {
