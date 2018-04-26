@@ -6,7 +6,7 @@ An Arduino sketch for an ESP8266, which monitors the flashing LED on the office 
 1. Follow the [instructions here](https://github.com/esp8266/Arduino#installing-with-boards-manager) to install the Arduino IDE and ESP8266 libraries
 2. Clone this repository and edit the file to add the correct WiFi SSID and password and the correct slack endpoint
 3. To flash onto the ESP8266 D1 Mini board, connect it to your computer via Micro USB and set up the flashing options in the tools menu as follows:
-![Flashing menu](https://i.imgur.com/TcKWR8Y.png)
+![Flashing menu](https://i.imgur.com/NtFzFqS.png)
 (The board an upload speed being most important)
 4. Upload using the upload button (circle with arrow) in the Arduino IDE
 
