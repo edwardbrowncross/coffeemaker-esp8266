@@ -28,6 +28,7 @@
 ESP8266WebServer server(80);
 HTTPClient http;
 
+int lightMeasurement;
 bool lightIsOn = false;
 int makerState = MAKER_OFF;
 String stateNames[4] = { "off", "on", "brewed", "stale" };
@@ -38,7 +39,8 @@ uint32_t lastOffTime;
 void handleServer () {
   String res;
   res += "I am a coffee maker.\n";
-  res += String("My light is ") + (lightIsOn ? "on" : "off") + ".\n";
+  res += "Light measurement is " + String(lightMeasurement) + "\n";
+  res += "My light is " + String(lightIsOn ? "on" : "off") + ".\n";
   res += "My state is " + stateNames[makerState] + ".\n";
   server.send(200, "text/plain", res);
 }
@@ -146,11 +148,11 @@ void setup() {
 }
 
 void loop() {
-  int v = analogRead(A0);
-  if (lightIsOn && v < THRESHOLD_LOW) {
+  lightMeasurement = analogRead(A0);
+  if (lightIsOn && lightMeasurement < THRESHOLD_LOW) {
     lightIsOn = false;
     handleTurnOff();
-  } else if (!lightIsOn && v > THRESHOLD_HIGH) {
+  } else if (!lightIsOn && lightMeasurement > THRESHOLD_HIGH) {
     lightIsOn = true;
     handleTurnOn();
   }
