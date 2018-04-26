@@ -18,7 +18,7 @@
 #define THRESHOLD_HIGH 700
 
 #define FLASH_PERIOD 5000
-#define BREW_TIME 90000
+#define BREW_TIME 540000
 
 #define MAKER_OFF 0
 #define MAKER_ON 1
