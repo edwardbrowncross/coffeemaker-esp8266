@@ -3,8 +3,11 @@
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPClient.h>
 #include <ESP8266mDNS.h>
+#include "HX711.h"
 
 #define REF_PIN 16
+#define SDA_PIN 4
+#define SCL_PIN 5
 
 #define SSID "*********"
 #define PASS "*********"
@@ -25,8 +28,12 @@
 #define MAKER_BREWED 2
 #define MAKER_STALE 3
 
+#define SCALE_CALIBRATION 91.57
+
 ESP8266WebServer server(80);
 HTTPClient http;
+
+HX711 scale(SDA_PIN, SCL_PIN);
 
 int lightMeasurement;
 bool lightIsOn = false;
@@ -35,6 +42,11 @@ String stateNames[4] = { "off", "on", "brewed", "stale" };
 
 uint32_t lastOnTime; 
 uint32_t lastOffTime;
+
+void initScale () {
+  scale.set_scale(SCALE_CALIBRATION);
+  scale.tare(10);
+}
 
 void handleServer () {
   String res;
@@ -124,6 +136,8 @@ void setup() {
   digitalWrite(REF_PIN, HIGH);
 
   Serial.begin(115200);
+
+  initScale();
   
   Serial.printf("[WIFI] Connecting to %s\n", SSID);
 
@@ -159,4 +173,7 @@ void loop() {
   handleTick();
   server.handleClient();
   delay(20);
+
+  Serial.print("read: \t\t");
+  Serial.println(scale.get_units(1));
 }
