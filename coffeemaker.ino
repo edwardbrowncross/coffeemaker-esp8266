@@ -74,8 +74,10 @@ void handleServer () {
   String res;
   res += "I am a coffee maker.\n";
   res += "Light measurement is " + String(lightMeasurement) + "\n";
-  res += "My light is " + String(lightIsOn ? "on" : "off") + ".\n";
-  res += "My state is " + makerStateNames[makerState] + ".\n";
+  res += "Coffee maker light is " + String(lightIsOn ? "on" : "off") + ".\n";
+  res += "Coffee maker state is " + makerStateNames[makerState] + ".\n";
+  res += "Jug is" + jugStateNames[jugState] + ".\n";
+  res += (String)"There are " + getCupsRemaining() + " cups of coffee remaining.\n";
   server.send(200, "text/plain", res);
 }
 
