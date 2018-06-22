@@ -14,8 +14,8 @@
 #define SLACK_URL "https://hooks.slack.com/services/*****/*****/***************"
 #define SLACK_HTTPS_THUMBPRINT "c10d5349d23ee52ba261d59e6f990d3dfd8bb2b3"
 
-#define THRESHOLD_LOW 500
-#define THRESHOLD_HIGH 700
+#define THRESHOLD_LOW 800
+#define THRESHOLD_HIGH 950
 
 #define FLASH_PERIOD 3000
 #define BREW_TIME 540000
@@ -120,6 +120,7 @@ void handleTick () {
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
   pinMode(REF_PIN, OUTPUT);
   digitalWrite(REF_PIN, HIGH);
 
