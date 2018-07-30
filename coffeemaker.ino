@@ -2,7 +2,9 @@
 #include <WiFiClient.h>
 #include <ESP8266WebServer.h>
 #include <ESP8266HTTPClient.h>
+#include <DNSServer.h>
 #include <ESP8266mDNS.h>
+#include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 
 #define REF_PIN 16
 
@@ -46,14 +48,10 @@ void setup() {
 
   Serial.begin(115200);
   
-  Serial.printf("[WIFI] Connecting to %s\n", SSID);
+  Serial.println("[WIFI] Attempting to start WIFI");
 
-  WiFi.disconnect(false);
-  WiFi.softAPdisconnect(false);
-  WiFi.begin(SSID, PASS);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(10);
-  }
+  WiFiManager wifiManager;
+  wifiManager.autoConnect("CoffeeMaker");
 
   Serial.print("[WIFI] Connected! IP address:");
   Serial.println(WiFi.localIP());
