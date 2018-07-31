@@ -28,6 +28,7 @@ bool configChanged = false;
 char mqttServer[51];
 char awsKeyID[21];
 char awsSecret[41];
+char awsRegion[11];
 
 int lightMeasurement;
 bool lightIsOn = false;
@@ -103,6 +104,8 @@ bool initConfig () {
   success = success && strlen(awsKeyID) != 0;
   strcpy(awsSecret, json["awsSecret"]);
   success = success && strlen(awsSecret) != 0;
+  strcpy(awsRegion, json["awsRegion"]);
+  success = success && strlen(awsRegion) != 0;
   configFile.close();
   return success;
 }
@@ -114,6 +117,7 @@ bool saveConfig () {
   json["mqttServer"] = mqttServer;
   json["awsKeyID"] = awsKeyID;
   json["awsSecret"] = awsSecret;
+  json["awsRegion"] = awsRegion;
   File configFile = SPIFFS.open("/config.json", "w");
   if (!configFile) {
     debugLog("CONFIG", "Failed to open config file for writing");
@@ -125,8 +129,9 @@ bool saveConfig () {
 void initWifi (bool forcePortal) {
   debugLog("WIFI", "Attempting to start WIFI");
   WiFiManagerParameter custMQTT("MQTT Server", "MQTT Server", mqttServer, 50);
-  WiFiManagerParameter custMQTT("AWS Access Key ID", "AWS Access Key ID", awsKeyID, 20);
-  WiFiManagerParameter custMQTT("AWS Secret Access Key", "AWS Secret Access Key", awsSecret, 40);
+  WiFiManagerParameter custAWSID("AWS Access Key ID", "AWS Access Key ID", awsKeyID, 20);
+  WiFiManagerParameter custAWSSec("AWS Secret Access Key", "AWS Secret Access Key", awsSecret, 40);
+  WiFiManagerParameter custAWSReg("AWS Region", "AWS Region", awsRegion, 10);
   WiFiManager wifiManager;
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.addParameter(&custMQTT);
@@ -138,6 +143,7 @@ void initWifi (bool forcePortal) {
   strcpy(mqttServer, custMQTT.getValue());
   strcpy(awsKeyID, custAWSID.getValue());
   strcpy(awsSecret, custAWSSec.getValue());
+  strcpy(awsRegion, custAWSReg.getValue());
   debugLog("WIFI", "Connected! IP address: " + WiFi.localIP());
   if (configChanged) {
     saveConfig();
