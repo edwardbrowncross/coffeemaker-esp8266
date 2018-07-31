@@ -26,12 +26,17 @@
 
 #define MAKER_OFF 0
 #define MAKER_ON 1
-#define MAKER_BREWED 2
-#define MAKER_STALE 3
+#define MAKER_STALE 2
 
 #define JUG_REMOVED 0
 #define JUG_PRESENT 1
 #define JUG_CLEANING 2
+
+#define COFFEE_PREPARING 0
+#define COFFEE_BREWING 1
+#define COFFEE_BREWED 2
+#define COFFEE_REHEATING 3
+#define COFFEE_COLD 4
 
 #define SCALE_CALIBRATION 91.57
 #define COFFEE_MAKER_WEIGHT 2000
@@ -49,7 +54,7 @@ HX711 scale(SDA_PIN, SCL_PIN);
 int lightMeasurement;
 bool lightIsOn = false;
 int makerState = MAKER_OFF;
-String makerStateNames[4] = { "off", "on", "brewed", "stale" };
+String makerStateNames[3] = { "off", "on", "stale" };
 
 uint32_t lastOnTime; 
 uint32_t lastOffTime;
@@ -65,6 +70,9 @@ String jugStateNames[3] = { "removed", "present", "MIA" };
 uint32_t lastWeightChangeTime;
 uint32_t lastJugRemovedTime;
 uint32_t lastJugReplacedTime;
+
+int coffeeState = COFFEE_PREPARING;
+String coffeeStateNames[5] = { "preparing", "brewing", "brewed", "reheating", "cold" };
 
 void initScale () {
   scale.set_scale(SCALE_CALIBRATION);
@@ -111,11 +119,6 @@ void handleMakerOn () {
   sendSlackMessage(":hotsprings: Coffee is brewing...");
 }
 
-void handleMakerBrewed () {
-  Serial.println("[Coffee] Coffee is now brewed");
-  sendSlackMessage(":coffee: Coffee is ready!");
-}
-
 void handleMakerStale () {
   Serial.println("[Coffee] Coffee is now stale");
   sendSlackMessage(":tea: Coffee is going stale.");
@@ -124,6 +127,11 @@ void handleMakerStale () {
 void handleMakerOff () {
   Serial.println("[Coffee] Maker is now off");
   sendSlackMessage(":weary: Coffee maker is off. Need more coffee.");
+}
+
+void handleCoffeeBrewed () {
+  Serial.println("[Coffee] Coffee is now brewed");
+  sendSlackMessage(":coffee: Coffee is ready!");
 }
 
 void handleWeightChange (int32_t delta) {
@@ -215,11 +223,16 @@ void handleTick () {
     handleMakerOff();
   } else if (hasBeenOnFor(2*FLASH_PERIOD) && !hasBeenOnFor(BREW_TIME) && makerState == MAKER_OFF) {
     makerState = MAKER_ON;
+    if (coffeeState == COFFEE_PREPARING) {
+      coffeeState = COFFEE_BREWING;
+    } else if (coffeeState == COFFEE_COLD) {
+      coffeeState = COFFEE_REHEATING;
+    }
     handleMakerOn();
-  } else if (hasBeenOnFor(BREW_TIME) && makerState == MAKER_ON) {
-    makerState = MAKER_BREWED;
-    handleMakerBrewed();
-  } else if (hasFlashed(FLASH_PERIOD) && makerState == MAKER_BREWED) {
+  } else if (hasBeenOnFor(BREW_TIME) && coffeeState == COFFEE_BREWING) {
+    coffeeState = COFFEE_BREWED;
+    handleCoffeeBrewed();
+  } else if (hasFlashed(FLASH_PERIOD) && makerState == MAKER_ON) {
     makerState = MAKER_STALE;
     handleMakerStale();
   }
@@ -232,6 +245,7 @@ void handleTick () {
 
   if (jugHasBeenGoneFor(JUG_CLEANING_TIME) && jugState == JUG_REMOVED) {
     jugState = JUG_CLEANING;
+    coffeeState = COFFEE_PREPARING;
     handleJugCleaning();
   }
 }
