@@ -25,7 +25,9 @@ ESP8266WebServer server(80);
 HTTPClient http;
 
 bool configChanged = false;
-char mqttServer[50];
+char mqttServer[51];
+char awsKeyID[21];
+char awsSecret[41];
 
 int lightMeasurement;
 bool lightIsOn = false;
@@ -97,6 +99,10 @@ bool initConfig () {
   bool success = true;
   strcpy(mqttServer, json["mqttServer"]);
   success = success && strlen(mqttServer) != 0;
+  strcpy(awsKeyID, json["awsKeyID"]);
+  success = success && strlen(awsKeyID) != 0;
+  strcpy(awsSecret, json["awsSecret"]);
+  success = success && strlen(awsSecret) != 0;
   configFile.close();
   return success;
 }
@@ -106,6 +112,8 @@ bool saveConfig () {
   DynamicJsonBuffer jsonBuffer;
   JsonObject& json = jsonBuffer.createObject();
   json["mqttServer"] = mqttServer;
+  json["awsKeyID"] = awsKeyID;
+  json["awsSecret"] = awsSecret;
   File configFile = SPIFFS.open("/config.json", "w");
   if (!configFile) {
     debugLog("CONFIG", "Failed to open config file for writing");
@@ -116,7 +124,9 @@ bool saveConfig () {
 
 void initWifi (bool forcePortal) {
   debugLog("WIFI", "Attempting to start WIFI");
-  WiFiManagerParameter custMQTT("MQTT Server", "***.iot.eu-west-2.amazonaws.com", mqttServer, 50);
+  WiFiManagerParameter custMQTT("MQTT Server", "MQTT Server", mqttServer, 50);
+  WiFiManagerParameter custMQTT("AWS Access Key ID", "AWS Access Key ID", awsKeyID, 20);
+  WiFiManagerParameter custMQTT("AWS Secret Access Key", "AWS Secret Access Key", awsSecret, 40);
   WiFiManager wifiManager;
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.addParameter(&custMQTT);
@@ -126,6 +136,8 @@ void initWifi (bool forcePortal) {
     wifiManager.autoConnect(AP_NAME);
   }
   strcpy(mqttServer, custMQTT.getValue());
+  strcpy(awsKeyID, custAWSID.getValue());
+  strcpy(awsSecret, custAWSSec.getValue());
   debugLog("WIFI", "Connected! IP address: " + WiFi.localIP());
   if (configChanged) {
     saveConfig();
