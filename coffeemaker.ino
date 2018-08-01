@@ -102,10 +102,23 @@ bool initConfig () {
     debugLog("CONFIG", "Failed to mount file system");
     return false;
   }
+  if (SPIFFS.exists("/config.json.fault")) {
+    debugLog("CONFIG", "Config fault file found. Deleting config");
+    if (!SPIFFS.remove("/config.json")) {
+      debugLog("CONFIG", "Failed to delete config file");
+    }
+    if (!SPIFFS.remove("/config.json.fault")) {
+      debugLog("CONFIG", "Failed to delete config fault file");
+    }
+    return false;
+  }
   if (!SPIFFS.exists("/config.json")) {
     debugLog("CONFIG", "Config file not found");
     return false;
   }
+  File configFault = SPIFFS.open("/config.json.fault", "w");
+  configFault.print("1");
+  configFault.close();
   File configFile = SPIFFS.open("/config.json", "r");
   if (!configFile) {
     debugLog("CONFIG", "Failed to open config file");
@@ -134,6 +147,9 @@ bool initConfig () {
   strcpy(awsRegion, json["awsRegion"]);
   success = success && strlen(awsRegion) != 0;
   configFile.close();
+  if (!SPIFFS.remove("/config.json.fault")) {
+    debugLog("CONFIG", "Failed to delete config fault file");
+  }
   return success;
 }
 
