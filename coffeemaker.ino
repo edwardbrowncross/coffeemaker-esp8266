@@ -32,7 +32,7 @@ HTTPClient http;
 
 const int maxMQTTpackageSize = 512;
 const int maxMQTTMessageHandlers = 1;
-AWSWebSocketClient awsClient(1000);
+AWSWebSocketClient awsClient(1000, 10000);
 PubSubClient client(awsClient);
 
 bool configChanged = false;
@@ -215,13 +215,23 @@ bool initMDNS () {
   return true;
 }
 
+void initAWS () {
+  awsClient.setAWSRegion(awsRegion);
+  awsClient.setAWSDomain(mqttServer);
+  awsClient.setAWSKeyID(awsKeyID);
+  awsClient.setAWSSecretKey(awsSecret);
+  awsClient.setUseSSL(true);
+}
+
 bool initMQTT () {
   debugLog("MQTT", "Connecting to MQTT endpoint");
+  if (client.connected()) {    
+    client.disconnect ();
+  }  
   client.setServer(mqttServer, MQTT_PORT);
-  while (!client.connected()) {
-    if (!client.connect("MQTT_ID")) {
-      debugLog("MQTT", "Failed to make connection. Retrying...");
-    }
+  if (!client.connect(MQTT_ID)) {
+    debugLog("MQTT", "Failed to make connection. ");
+    return false;
   }
   debugLog("MQTT", "Connection established");
   client.setCallback(mqttCallback);
@@ -237,6 +247,8 @@ void setup() {
   initWifi(!configLoaded);
   initServer();
   initMDNS();
+  initAWS();
+  initMQTT();
 }
 
 void loop() {
