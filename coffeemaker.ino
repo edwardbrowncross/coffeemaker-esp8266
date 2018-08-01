@@ -63,11 +63,13 @@ void handleServer () {
 
 void handleTurnOn () {
   digitalWrite(LED_BUILTIN, LOW);
+  mqttSend("light", "1");
   debugLog("LDR", "Bright");
 }
 
 void handleTurnOff () {
   digitalWrite(LED_BUILTIN, HIGH);
+  mqttSend("light", "0");
   debugLog("LDR", "Dark");
 }
 
