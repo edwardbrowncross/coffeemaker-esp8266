@@ -7,6 +7,9 @@
 #include <ESP8266mDNS.h>
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson
+#include <PubSubClient.h> // https://projects.eclipse.org/projects/technology.paho/downloads
+#include <AWSWebSocketClient.h> // https://github.com/odelot/aws-mqtt-websockets
+
 
 #define REF_PIN 16
 
@@ -19,13 +22,22 @@
 #define FLASH_PERIOD 3000
 #define BREW_TIME 540000
 
+#define MQTT_PORT 443
+#define MQTT_ID "coffee_maker"
+
 #define LOGGING true
 
 ESP8266WebServer server(80);
 HTTPClient http;
 
+const int maxMQTTpackageSize = 512;
+const int maxMQTTMessageHandlers = 1;
+AWSWebSocketClient awsClient(1000);
+PubSubClient client(awsClient);
+
 bool configChanged = false;
 char mqttServer[51];
+char mqttTopic[65];
 char awsKeyID[21];
 char awsSecret[41];
 char awsRegion[11];
@@ -71,6 +83,19 @@ void saveConfigCallback () {
   configChanged = true;
 }
 
+void mqttCallback (char* topic, byte* payload, unsigned int len) {
+  debugLog("MQTT", "receiving message on topic" + String(topic) + ":");
+  for (int i = 0; i < len; i++) { Serial.print((char)payload[i]); }
+  Serial.println();
+}
+
+void mqttSend (String field, String value) {
+  String payload = "{\"state\":{\"reported\":{\"" + field + "\":" + value + "}}}";
+  char buf[100];
+  payload.toCharArray(buf, 100);
+  int rc = client.publish(mqttTopic, buf);
+}
+
 bool initConfig () {
   debugLog("CONFIG", "Loading config file...");
   if (!SPIFFS.begin()) {
@@ -100,6 +125,8 @@ bool initConfig () {
   bool success = true;
   strcpy(mqttServer, json["mqttServer"]);
   success = success && strlen(mqttServer) != 0;
+  strcpy(mqttTopic, json["mqttTopic"]);
+  success = success && strlen(mqttTopic) != 0;
   strcpy(awsKeyID, json["awsKeyID"]);
   success = success && strlen(awsKeyID) != 0;
   strcpy(awsSecret, json["awsSecret"]);
@@ -115,6 +142,7 @@ bool saveConfig () {
   DynamicJsonBuffer jsonBuffer;
   JsonObject& json = jsonBuffer.createObject();
   json["mqttServer"] = mqttServer;
+  json["mqttTopic"] = mqttTopic;
   json["awsKeyID"] = awsKeyID;
   json["awsSecret"] = awsSecret;
   json["awsRegion"] = awsRegion;
@@ -129,18 +157,24 @@ bool saveConfig () {
 void initWifi (bool forcePortal) {
   debugLog("WIFI", "Attempting to start WIFI");
   WiFiManagerParameter custMQTT("MQTT Server", "MQTT Server", mqttServer, 50);
+  WiFiManagerParameter custTopic("MQTT Topci", "MQTT Topic", mqttTopic, 64);
   WiFiManagerParameter custAWSID("AWS Access Key ID", "AWS Access Key ID", awsKeyID, 20);
   WiFiManagerParameter custAWSSec("AWS Secret Access Key", "AWS Secret Access Key", awsSecret, 40);
   WiFiManagerParameter custAWSReg("AWS Region", "AWS Region", awsRegion, 10);
   WiFiManager wifiManager;
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.addParameter(&custMQTT);
+  wifiManager.addParameter(&custTopic);
+  wifiManager.addParameter(&custAWSID);
+  wifiManager.addParameter(&custAWSSec);
+  wifiManager.addParameter(&custAWSReg);
   if (forcePortal) {
     wifiManager.startConfigPortal(AP_NAME);
   } else {
     wifiManager.autoConnect(AP_NAME);
   }
   strcpy(mqttServer, custMQTT.getValue());
+  strcpy(mqttTopic, custTopic.getValue());
   strcpy(awsKeyID, custAWSID.getValue());
   strcpy(awsSecret, custAWSSec.getValue());
   strcpy(awsRegion, custAWSReg.getValue());
@@ -165,6 +199,20 @@ bool initMDNS () {
   return true;
 }
 
+bool initMQTT () {
+  debugLog("MQTT", "Connecting to MQTT endpoint");
+  client.setServer(mqttServer, MQTT_PORT);
+  while (!client.connected()) {
+    if (!client.connect("MQTT_ID")) {
+      debugLog("MQTT", "Failed to make connection. Retrying...");
+    }
+  }
+  debugLog("MQTT", "Connection established");
+  client.setCallback(mqttCallback);
+  client.subscribe(mqttTopic);
+  return true;
+}
+
 void setup() {
   Serial.begin(115200);
 
@@ -185,5 +233,10 @@ void loop() {
     handleTurnOn();
   }
   server.handleClient();
+  if (awsClient.connected()) {    
+      client.loop();
+  } else {
+    initMQTT();
+  }
   delay(20);
 }
