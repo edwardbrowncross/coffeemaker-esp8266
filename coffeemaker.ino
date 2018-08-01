@@ -36,11 +36,11 @@ AWSWebSocketClient awsClient(1000, 10000);
 PubSubClient client(awsClient);
 
 bool configChanged = false;
-char mqttServer[51];
-char mqttTopic[65];
-char awsKeyID[21];
-char awsSecret[41];
-char awsRegion[11];
+char mqttServer[52];
+char mqttTopic[66];
+char awsKeyID[22];
+char awsSecret[42];
+char awsRegion[12];
 
 int lightMeasurement;
 bool lightIsOn = false;
@@ -172,10 +172,10 @@ bool saveConfig () {
 
 void initWifi (bool forcePortal) {
   debugLog("WIFI", "Attempting to start WIFI");
-  WiFiManagerParameter custMQTT("MQTT Server", "MQTT Server", mqttServer, 50);
-  WiFiManagerParameter custTopic("MQTT Topci", "MQTT Topic", mqttTopic, 64);
-  WiFiManagerParameter custAWSID("AWS Access Key ID", "AWS Access Key ID", awsKeyID, 20);
-  WiFiManagerParameter custAWSSec("AWS Secret Access Key", "AWS Secret Access Key", awsSecret, 40);
+  WiFiManagerParameter custMQTT("MQTT Server", "MQTT Server", mqttServer, 51);
+  WiFiManagerParameter custTopic("MQTT Topci", "MQTT Topic", mqttTopic, 65);
+  WiFiManagerParameter custAWSID("AWS Access Key ID", "AWS Access Key ID", awsKeyID, 21);
+  WiFiManagerParameter custAWSSec("AWS Secret Access Key", "AWS Secret Access Key", awsSecret, 41);
   WiFiManagerParameter custAWSReg("AWS Region", "AWS Region", awsRegion, 10);
   WiFiManager wifiManager;
   wifiManager.setSaveConfigCallback(saveConfigCallback);
