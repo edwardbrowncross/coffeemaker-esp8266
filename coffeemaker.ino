@@ -134,7 +134,8 @@ bool initConfig () {
     debugLog("CONFIG", "Failed to parse config JSON");
     return false;
   }
-  debugLog("CONFIG", "Config file parsed");
+  debugLog("CONFIG", "Config file parsed:");
+  json.printTo(Serial);
   bool success = true;
   strcpy(mqttServer, json["mqttServer"]);
   success = success && strlen(mqttServer) != 0;
@@ -150,11 +151,12 @@ bool initConfig () {
   if (!SPIFFS.remove("/config.json.fault")) {
     debugLog("CONFIG", "Failed to delete config fault file");
   }
+  debugLog("CONFIG", "Done");
   return success;
 }
 
 bool saveConfig () {
-  debugLog("CONFIG", "Saving config file...");
+  debugLog("CONFIG", "Generating JSON");
   DynamicJsonBuffer jsonBuffer;
   JsonObject& json = jsonBuffer.createObject();
   json["mqttServer"] = mqttServer;
@@ -162,12 +164,15 @@ bool saveConfig () {
   json["awsKeyID"] = awsKeyID;
   json["awsSecret"] = awsSecret;
   json["awsRegion"] = awsRegion;
+  debugLog("CONFIG", "Saving config file:");
   File configFile = SPIFFS.open("/config.json", "w");
   if (!configFile) {
     debugLog("CONFIG", "Failed to open config file for writing");
   }
+  json.printTo(Serial);
   json.printTo(configFile);
   configFile.close();
+  debugLog("CONFIG", "Done");
 }
 
 void initWifi (bool forcePortal) {
@@ -216,6 +221,10 @@ bool initMDNS () {
 }
 
 void initAWS () {
+  debugLog("AWS", "Intializing AWS client:");
+  debugLog("AWS", String(awsKeyID));
+  debugLog("AWS", String(awsRegion));
+  debugLog("AWS", String("") + awsSecret[0] + "..." + awsSecret[strlen(awsSecret) - 1]);
   awsClient.setAWSRegion(awsRegion);
   awsClient.setAWSDomain(mqttServer);
   awsClient.setAWSKeyID(awsKeyID);
@@ -224,7 +233,9 @@ void initAWS () {
 }
 
 bool initMQTT () {
-  debugLog("MQTT", "Connecting to MQTT endpoint");
+  debugLog("MQTT", "Connecting to MQTT endpoint:");
+  debugLog("MQTT", String(mqttServer));
+  debugLog("MQTT", String(mqttTopic));
   if (client.connected()) {    
     client.disconnect ();
   }  
