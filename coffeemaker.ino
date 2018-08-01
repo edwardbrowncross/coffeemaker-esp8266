@@ -19,8 +19,11 @@
 #define THRESHOLD_LOW 800
 #define THRESHOLD_HIGH 950
 
+#define LIGHT_STATE_ON "on"
+#define LIGHT_STATE_OFF "off"
+#define LIGHT_STATE_FLASHING "flash"
+
 #define FLASH_PERIOD 3000
-#define BREW_TIME 540000
 
 #define MQTT_PORT 443
 #define MQTT_ID "coffee_maker"
@@ -44,6 +47,9 @@ char awsRegion[12];
 
 int lightMeasurement;
 bool lightIsOn = false;
+uint32_t lastLightOnTime = 0;
+uint32_t lastLightOffTime = 0;
+String lightState = LIGHT_STATE_OFF;
 
 
 void debugLog (String name, String message) {
@@ -61,16 +67,40 @@ void handleServer () {
   server.send(200, "text/plain", res);
 }
 
-void handleTurnOn () {
+void handleLightHigh () {
   digitalWrite(LED_BUILTIN, LOW);
-  mqttSend("light", "1");
+  lastLightOnTime = millis();
   debugLog("LDR", "Bright");
 }
-
-void handleTurnOff () {
+void handleLightLow () {
   digitalWrite(LED_BUILTIN, HIGH);
-  mqttSend("light", "0");
+  lastLightOffTime = millis();
   debugLog("LDR", "Dark");
+}
+
+void handleLEDChange (String newState) {
+  lightState = newState;
+  mqttSend("light", lightState);
+}
+
+bool hasBeenOnFor (uint32_t t) {
+  return (lightIsOn && millis() - lastLightOnTime > t);
+}
+bool hasBeenOffFor (uint32_t t) {
+  return (!lightIsOn && millis() - lastLightOffTime > t);
+}
+bool hasFlashed (uint32_t t) {
+  return (lightIsOn && lastLightOffTime > 0 && millis() - lastLightOffTime < t) || (!lightIsOn && lastLightOnTime > 0 && millis() - lastLightOnTime < t);
+}
+
+void handleTick () {
+  if (hasBeenOffFor(2*FLASH_PERIOD) && lightState != LIGHT_STATE_OFF) {
+    handleLEDChange(LIGHT_STATE_OFF);
+  } else if (hasBeenOnFor(2*FLASH_PERIOD) && lightState != LIGHT_STATE_ON) {
+    handleLEDChange(LIGHT_STATE_ON);
+  } else if (hasFlashed(FLASH_PERIOD) && lightState != LIGHT_STATE_FLASHING) {
+    handleLEDChange(LIGHT_STATE_FLASHING);
+  }
 }
 
 void initPins () {
@@ -268,10 +298,10 @@ void loop() {
   lightMeasurement = analogRead(A0);
   if (lightIsOn && lightMeasurement < THRESHOLD_LOW) {
     lightIsOn = false;
-    handleTurnOff();
+    handleLightLow();
   } else if (!lightIsOn && lightMeasurement > THRESHOLD_HIGH) {
     lightIsOn = true;
-    handleTurnOn();
+    handleLightHigh();
   }
   server.handleClient();
   if (awsClient.connected()) {    
@@ -279,5 +309,6 @@ void loop() {
   } else {
     initMQTT();
   }
+  handleTick();
   delay(20);
 }
