@@ -22,7 +22,15 @@
 #define LIGHT_STATE_OFF "off"
 #define LIGHT_STATE_FLASHING "flash"
 
+#define COFFEE_STATE_OFF "off"
+#define COFFEE_STATE_BREWING "brewing"
+#define COFFEE_STATE_BREWED "brewed"
+#define COFFEE_STATE_STALE "stale"
+#define COFFEE_STATE_REHEATING "reheating"
+#define COFFEE_STATE_PREPARING "preparing"
+
 #define FLASH_PERIOD 3000
+#define BREW_TIME 540000
 
 #define MQTT_PORT 443
 #define MQTT_ID "coffee_maker"
@@ -50,6 +58,8 @@ uint32_t lastLightOnTime = 0;
 uint32_t lastLightOffTime = 0;
 String lightState = LIGHT_STATE_OFF;
 
+String lastBrewTime;
+String coffeeState = COFFEE_STATE_OFF;
 
 void debugLog (String name, String message) {
   if (!LOGGING) {
@@ -79,24 +89,48 @@ void handleLEDChange (String newState) {
   lightState = newState;
   mqttSend("light", lightState);
 }
+void handleCoffeeStateChange (String newState) {
+  coffeeState = newState;
+  mqttSend("coffee", coffeeState);
+}
 
-bool hasBeenOnFor (uint32_t t) {
+bool ledHasBeenOnFor (uint32_t t) {
   return (lightIsOn && millis() - lastLightOnTime > t);
 }
-bool hasBeenOffFor (uint32_t t) {
+bool ledHasBeenOffFor (uint32_t t) {
   return (!lightIsOn && millis() - lastLightOffTime > t);
 }
-bool hasFlashed (uint32_t t) {
+bool ledHasFlashed (uint32_t t) {
   return (lightIsOn && lastLightOffTime > 0 && millis() - lastLightOffTime < t) || (!lightIsOn && lastLightOnTime > 0 && millis() - lastLightOnTime < t);
 }
 
 void handleTick () {
-  if (hasBeenOffFor(2*FLASH_PERIOD) && lightState != LIGHT_STATE_OFF) {
+  if (ledHasBeenOffFor(2*FLASH_PERIOD) && lightState != LIGHT_STATE_OFF) {
     handleLEDChange(LIGHT_STATE_OFF);
-  } else if (hasBeenOnFor(2*FLASH_PERIOD) && lightState != LIGHT_STATE_ON) {
+  } else if (ledHasBeenOnFor(2*FLASH_PERIOD) && lightState != LIGHT_STATE_ON) {
     handleLEDChange(LIGHT_STATE_ON);
-  } else if (hasFlashed(FLASH_PERIOD) && lightState != LIGHT_STATE_FLASHING) {
+  } else if (ledHasFlashed(FLASH_PERIOD) && lightState != LIGHT_STATE_FLASHING) {
     handleLEDChange(LIGHT_STATE_FLASHING);
+  }
+
+  if (coffeeState == COFFEE_STATE_OFF) {
+    if (lightState == LIGHT_STATE_ON) {
+      handleCoffeeStateChange(COFFEE_STATE_BREWING);
+    }
+  } else if (coffeeState == COFFEE_STATE_BREWING) {
+    if (lightState == LIGHT_STATE_OFF) {
+      handleCoffeeStateChange(COFFEE_STATE_OFF);
+    } else if (ledHasBeenOnFor(BREW_TIME)) {
+      handleCoffeeStateChange(COFFEE_STATE_BREWED);
+    }
+  } else if (coffeeState == COFFEE_STATE_BREWED) {
+    if (lightState == LIGHT_STATE_OFF) {
+      handleCoffeeStateChange(COFFEE_STATE_STALE);
+    }
+  } else if (coffeeState == COFFEE_STATE_STALE) {
+    if (lightState == LIGHT_STATE_ON) {
+      handleCoffeeStateChange(COFFEE_STATE_BREWING);
+    }
   }
 }
 
