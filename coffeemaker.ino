@@ -10,7 +10,6 @@
 #include <PubSubClient.h> // https://projects.eclipse.org/projects/technology.paho/downloads
 #include <AWSWebSocketClient.h> // https://github.com/odelot/aws-mqtt-websockets
 
-
 #define REF_PIN 16
 
 #define HOSTNAME "coffeemaker"
@@ -39,11 +38,11 @@ AWSWebSocketClient awsClient(1000, 10000);
 PubSubClient client(awsClient);
 
 bool configChanged = false;
-char mqttServer[52];
+char mqttServer[51];
 char mqttTopic[66];
-char awsKeyID[22];
-char awsSecret[42];
-char awsRegion[12];
+char awsKeyID[21];
+char awsSecret[41];
+char awsRegion[11];
 
 int lightMeasurement;
 bool lightIsOn = false;
@@ -212,10 +211,10 @@ bool saveConfig () {
 void initWifi (bool forcePortal) {
   debugLog("WIFI", "Attempting to start WIFI");
   WiFiManagerParameter custMQTT("MQTT Server", "MQTT Server", mqttServer, 51);
-  WiFiManagerParameter custTopic("MQTT Topci", "MQTT Topic", mqttTopic, 65);
+  WiFiManagerParameter custTopic("MQTT Topci", "MQTT Topic", mqttTopic, 66);
   WiFiManagerParameter custAWSID("AWS Access Key ID", "AWS Access Key ID", awsKeyID, 21);
   WiFiManagerParameter custAWSSec("AWS Secret Access Key", "AWS Secret Access Key", awsSecret, 41);
-  WiFiManagerParameter custAWSReg("AWS Region", "AWS Region", awsRegion, 10);
+  WiFiManagerParameter custAWSReg("AWS Region", "AWS Region", awsRegion, 11);
   WiFiManager wifiManager;
   wifiManager.setSaveConfigCallback(saveConfigCallback);
   wifiManager.addParameter(&custMQTT);
