@@ -156,7 +156,7 @@ void mqttCallback (char* topic, byte* payload, unsigned int len) {
 
 void mqttSend (String field, String value) {
   digitalWrite(LED_BUILTIN, LOW);
-  String payload = "{\"state\":{\"reported\":{\"" + field + "\":" + value + "}}}";
+  String payload = "{\"state\":{\"reported\":{\"" + field + "\":\"" + value + "\"}}}";
   char buf[100];
   payload.toCharArray(buf, 100);
   int rc = client.publish(mqttTopic, buf);
