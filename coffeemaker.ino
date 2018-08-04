@@ -27,6 +27,9 @@
 #define LIGHT_STATE_OFF "off"
 #define LIGHT_STATE_FLASHING "flash"
 
+#define JUG_STATE_PRESENT "present"
+#define JUG_STATE_REMOVED "removed"
+
 #define COFFEE_STATE_OFF "off"
 #define COFFEE_STATE_BREWING "brewing"
 #define COFFEE_STATE_BREWED "brewed"
@@ -37,6 +40,7 @@
 #define FLASH_PERIOD 3000
 #define BREW_TIME 5400 //540000
 #define JUG_CLEANING_TIME 120000
+#define JUG_CLEANING_TIMEOUT 300000
 
 #define SCALE_CALIBRATION 91.57
 #define COFFEE_MAKER_WEIGHT 2000
@@ -89,7 +93,7 @@ int32_t referenceWeight;
 int32_t currentWeight;
 int32_t weightMeasurement;
 int32_t lastLoadedWeight;
-bool jugPresent = true;
+String jugState = JUG_STATE_PRESENT;
 
 uint32_t lastWeightChangeTime;
 uint32_t lastJugRemovedTime;
@@ -101,7 +105,7 @@ void handleServer () {
   res += "I am a coffee maker.\n";
   res += "Light measurement is " + String(lightMeasurement) + "\n";
   res += "My light is " + String(lightIsOn ? "on" : "off") + ".\n";
-  res += "Jug is " + (jugPresent ? "present" : "removed") + ".\n";
+  res += "Jug is " + jugState + ".\n";
   res += (String)"There are " + getCupsRemaining() + " cups of coffee remaining.\n";
   server.send(200, "text/plain", res);
 }
@@ -176,6 +180,12 @@ void handleTick () {
     if (lightState == LIGHT_STATE_OFF) {
       handleCoffeeStateChange(COFFEE_STATE_STALE);
     }
+  } else if (coffeeState == COFFEE_STATE_PREPARING) {
+    if (jugState == JUG_STATE_PRESENT) {
+      handleCoffeeStateChange(COFFEE_STATE_OFF);
+    } else if (jugHasBeenGoneFor(JUG_CLEANING_TIMEOUT)) {
+      handleCoffeeStateChange(COFFEE_STATE_OFF);
+    }
   }
 }
 
@@ -198,7 +208,7 @@ void handleWeightChange (int32_t newWeight) {
   if (!jugPresent && delta > COFFEE_JUG_WEIGHT * 0.75)
   {
     debugLog("COFFEE", "Jug replaced");
-    jugPresent = true
+    handleJugStateChange(JUG_STATE_PRESENT);
     int32_t loadedDelta = newWeight - lastLoadedWeight;
     if (abs(loadedDelta) > WEIGHT_CHANGE_THRESHOLD) {
       handleCoffeeWeightChange(newWeight - referenceWeight);
@@ -207,7 +217,7 @@ void handleWeightChange (int32_t newWeight) {
   else if (jugPresent && delta < -COFFEE_JUG_WEIGHT * 0.75)
   {
     debugLog("COFFEE", "Jug removed");
-    jugPresent = false;
+    handleJugStateChange(JUG_STATE_REMOVED);
     lastJugRemovedTime = millis();
     lastLoadedWeight = currentWeight;
     referenceWeight = newWeight + COFFEE_JUG_WEIGHT;
@@ -218,8 +228,13 @@ void handleWeightChange (int32_t newWeight) {
   currentWeight = newWeight;
 }
 
+void handleJugStateChange (String newState) {
+  mqttSend("jugPresent", newState == JUG_STATE_PRESENT ? "true" : "false");
+  jugState = newState;
+}
+
 void handleCoffeeWeightChange (int32_t newWeight) {
-  mqttSEnd("coffeeWeight", newWeight);
+  mqttSend("coffeeWeight", newWeight);
 }
 
 float getCupsRemaining () {
