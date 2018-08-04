@@ -11,6 +11,8 @@
 #include <AWSWebSocketClient.h> // https://github.com/odelot/aws-mqtt-websockets
 
 #define REF_PIN 16
+#define SETUP_PIN 14
+#define SETUP_REF_PIN 12
 
 #define HOSTNAME "coffeemaker"
 #define AP_NAME "Coffee Maker"
@@ -30,7 +32,7 @@
 #define COFFEE_STATE_PREPARING "preparing"
 
 #define FLASH_PERIOD 3000
-#define BREW_TIME 540000
+#define BREW_TIME 5400 //540000
 
 #define MQTT_PORT 443
 #define MQTT_ID "coffee_maker"
@@ -139,6 +141,9 @@ void initPins () {
   digitalWrite(LED_BUILTIN, HIGH);
   pinMode(REF_PIN, OUTPUT);
   digitalWrite(REF_PIN, HIGH);
+  pinMode(SETUP_REF_PIN, OUTPUT);
+  digitalWrite(SETUP_REF_PIN, LOW);
+  pinMode(SETUP_PIN, INPUT_PULLUP);
 }
 
 void saveConfigCallback () {
@@ -251,24 +256,40 @@ void initWifi (bool forcePortal) {
   WiFiManagerParameter custAWSReg("AWS Region", "AWS Region", awsRegion, 11);
   WiFiManager wifiManager;
   wifiManager.setSaveConfigCallback(saveConfigCallback);
+  wifiManager.setConfigPortalTimeout(300);
   wifiManager.addParameter(&custMQTT);
   wifiManager.addParameter(&custTopic);
   wifiManager.addParameter(&custAWSID);
   wifiManager.addParameter(&custAWSSec);
   wifiManager.addParameter(&custAWSReg);
   if (forcePortal) {
+    debugLog("WIFI", "Starting config portal");
     wifiManager.startConfigPortal(AP_NAME);
   } else {
+    debugLog("WIFI", "Auto-connecting");
     wifiManager.autoConnect(AP_NAME);
   }
-  strcpy(mqttServer, custMQTT.getValue());
-  strcpy(mqttTopic, custTopic.getValue());
-  strcpy(awsKeyID, custAWSID.getValue());
-  strcpy(awsSecret, custAWSSec.getValue());
-  strcpy(awsRegion, custAWSReg.getValue());
-  debugLog("WIFI", "Connected! IP address: " + WiFi.localIP());
   if (configChanged) {
+    debugLog("WIFI", "Updating config");
+    strcpy(mqttServer, custMQTT.getValue());
+    strcpy(mqttTopic, custTopic.getValue());
+    strcpy(awsKeyID, custAWSID.getValue());
+    strcpy(awsSecret, custAWSSec.getValue());
+    strcpy(awsRegion, custAWSReg.getValue());
     saveConfig();
+  }
+  for (int i=0; i<150; i++) {
+    if (WiFi.status() == WL_CONNECTED) {
+      break;
+    }
+    delay(100);
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    debugLog("WIFI", "Connected! IP address: " + WiFi.localIP());
+  } else {
+    debugLog("WIFI", "Failed to connect after 15 seconds");
+    WiFi.disconnect();
+    return initWifi(true);
   }
 }
 
@@ -322,7 +343,8 @@ void setup() {
 
   initPins();
   bool configLoaded = initConfig();
-  initWifi(!configLoaded);
+  bool forceConfig = (digitalRead(SETUP_PIN) == LOW);
+  initWifi(forceConfig || !configLoaded);
   initServer();
   initMDNS();
   initAWS();
