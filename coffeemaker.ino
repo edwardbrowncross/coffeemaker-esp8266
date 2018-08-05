@@ -9,7 +9,7 @@
 #include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson
 #include <PubSubClient.h> // https://projects.eclipse.org/projects/technology.paho/downloads
 #include <AWSWebSocketClient.h> // https://github.com/odelot/aws-mqtt-websockets
-#include <HX711.h> // https://github.com/aguegu/ardulibs/tree/master/hx711
+#include <HX711.h> // https://github.com/bogde/HX711
 
 #define REF_PIN 16
 #define SETUP_PIN 14
@@ -20,8 +20,8 @@
 #define HOSTNAME "coffeemaker"
 #define AP_NAME "Coffee Maker"
 
-#define THRESHOLD_LOW 800
-#define THRESHOLD_HIGH 950
+#define LED_THRESHOLD_LOW 800
+#define LED_THRESHOLD_HIGH 950
 
 #define LIGHT_STATE_ON "on"
 #define LIGHT_STATE_OFF "off"
@@ -110,7 +110,7 @@ void handleLightLow () {
 
 void handleWeightChange (int32_t newWeight) {
   int32_t delta = newWeight - currentWeight;
-  if (!jugPresent && delta > COFFEE_JUG_WEIGHT * 0.75)
+  if (jugState == JUG_STATE_REMOVED && delta > COFFEE_JUG_WEIGHT * 0.75)
   {
     debugLog("COFFEE", "Jug replaced");
     handleJugStateChange(JUG_STATE_PRESENT);
@@ -119,7 +119,7 @@ void handleWeightChange (int32_t newWeight) {
       handleCoffeeWeightChange(newWeight - referenceWeight);
     }
   }
-  else if (jugPresent && delta < -COFFEE_JUG_WEIGHT * 0.75)
+  else if (jugState == JUG_STATE_PRESENT && delta < -COFFEE_JUG_WEIGHT * 0.75)
   {
     debugLog("COFFEE", "Jug removed");
     handleJugStateChange(JUG_STATE_REMOVED);
@@ -133,7 +133,7 @@ void handleWeightChange (int32_t newWeight) {
   currentWeight = newWeight;
 }
 void handleCoffeeWeightChange (int32_t newWeight) {
-  mqttSend("coffeeWeight", newWeight);
+  mqttSend("coffeeWeight", String("") + newWeight);
 }
 
 void handleLEDChange (String newState) {
@@ -160,7 +160,7 @@ bool ledHasFlashed (uint32_t t) {
 }
 
 float getCupsRemaining () {
-  if (jugPresent) {
+  if (jugState == JUG_STATE_PRESENT) {
     return float(currentWeight - referenceWeight) / COFFEE_PORTION_WEIGHT;
   } else {
     return float(lastLoadedWeight - referenceWeight) / COFFEE_PORTION_WEIGHT;
@@ -174,7 +174,7 @@ bool weightHasChangedBy (uint32_t w) {
   return abs(currentWeight - weightMeasurement) > w;
 }
 bool jugHasBeenGoneFor (uint32_t t) {
-  return jugState != JUG_PRESENT && millis() - lastJugRemovedTime > t;
+  return jugState != JUG_STATE_PRESENT && millis() - lastJugRemovedTime > t;
 }
 
 void handleTick () {
@@ -463,7 +463,7 @@ void loop() {
   if (lightIsOn && lightMeasurement < LED_THRESHOLD_LOW) {
     lightIsOn = false;
     handleLightLow();
-  } else if (!lightIsOn && lightMeasurement > THRESHOLD_HIGH) {
+  } else if (!lightIsOn && lightMeasurement > LED_THRESHOLD_HIGH) {
     lightIsOn = true;
     handleLightHigh();
   }
