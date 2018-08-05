@@ -9,7 +9,9 @@
 #include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson
 #include <PubSubClient.h> // https://projects.eclipse.org/projects/technology.paho/downloads
 #include <AWSWebSocketClient.h> // https://github.com/odelot/aws-mqtt-websockets
+#define ARDUINO_VERSION 107 // hotfix for https://github.com/bogde/HX711/issues/73
 #include <HX711.h> // https://github.com/bogde/HX711
+
 
 #define REF_PIN 16
 #define SETUP_PIN 14
@@ -38,15 +40,14 @@
 #define COFFEE_STATE_PREPARING "preparing"
 
 #define FLASH_PERIOD 3000
-#define BREW_TIME 5400 //540000
+#define BREW_TIME 540000
 #define JUG_CLEANING_TIME 120000
 #define JUG_CLEANING_TIMEOUT 300000
 
-#define SCALE_CALIBRATION 91.57
-#define COFFEE_MAKER_WEIGHT 2000
+#define SCALE_CALIBRATION 22.75
 #define COFFEE_JUG_WEIGHT 250
 #define COFFEE_PORTION_WEIGHT 250
-#define WEIGHT_CHANGE_THRESHOLD 20
+#define WEIGHT_CHANGE_THRESHOLD 50
 #define WEIGHT_SETTLING_TIME 1000
 #define WEIGHT_EASING 0
 
