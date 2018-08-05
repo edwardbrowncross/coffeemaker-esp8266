@@ -9,7 +9,7 @@
 #include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson
 #include <PubSubClient.h> // https://projects.eclipse.org/projects/technology.paho/downloads
 #include <AWSWebSocketClient.h> // https://github.com/odelot/aws-mqtt-websockets
-#include <HX711.h>
+#include <HX711.h> // https://github.com/aguegu/ardulibs/tree/master/hx711
 
 #define REF_PIN 16
 #define SETUP_PIN 14
@@ -81,33 +81,22 @@ HX711 scale(SDA_PIN, SCL_PIN);
 String lastBrewTime;
 String coffeeState = COFFEE_STATE_OFF;
 
-void debugLog (String name, String message) {
-  if (!LOGGING) {
-    return;
-  }
-  Serial.println(String("")+"["+name+"] "+message);
-}
-
 int32_t zeroWeight;
 int32_t referenceWeight;
 int32_t currentWeight;
 int32_t weightMeasurement;
 int32_t lastLoadedWeight;
-String jugState = JUG_STATE_PRESENT;
-
 uint32_t lastWeightChangeTime;
 uint32_t lastJugRemovedTime;
 uint32_t lastJugReplacedTime;
+String jugState = JUG_STATE_PRESENT;
 
 
-void handleServer () {
-  String res;
-  res += "I am a coffee maker.\n";
-  res += "Light measurement is " + String(lightMeasurement) + "\n";
-  res += "My light is " + String(lightIsOn ? "on" : "off") + ".\n";
-  res += "Jug is " + jugState + ".\n";
-  res += (String)"There are " + getCupsRemaining() + " cups of coffee remaining.\n";
-  server.send(200, "text/plain", res);
+void debugLog (String name, String message) {
+  if (!LOGGING) {
+    return;
+  }
+  Serial.println(String("")+"["+name+"] "+message);
 }
 
 void handleLightHigh () {
@@ -119,9 +108,41 @@ void handleLightLow () {
   debugLog("LDR", "Dark");
 }
 
+void handleWeightChange (int32_t newWeight) {
+  int32_t delta = newWeight - currentWeight;
+  if (!jugPresent && delta > COFFEE_JUG_WEIGHT * 0.75)
+  {
+    debugLog("COFFEE", "Jug replaced");
+    handleJugStateChange(JUG_STATE_PRESENT);
+    int32_t loadedDelta = newWeight - lastLoadedWeight;
+    if (abs(loadedDelta) > WEIGHT_CHANGE_THRESHOLD) {
+      handleCoffeeWeightChange(newWeight - referenceWeight);
+    }
+  }
+  else if (jugPresent && delta < -COFFEE_JUG_WEIGHT * 0.75)
+  {
+    debugLog("COFFEE", "Jug removed");
+    handleJugStateChange(JUG_STATE_REMOVED);
+    lastJugRemovedTime = millis();
+    lastLoadedWeight = currentWeight;
+    referenceWeight = newWeight + COFFEE_JUG_WEIGHT;
+  }
+
+  Serial.print("[Coffee] Delta weight:");
+  Serial.println(delta, DEC);
+  currentWeight = newWeight;
+}
+void handleCoffeeWeightChange (int32_t newWeight) {
+  mqttSend("coffeeWeight", newWeight);
+}
+
 void handleLEDChange (String newState) {
   lightState = newState;
   mqttSend("light", lightState);
+}
+void handleJugStateChange (String newState) {
+  jugState = newState;
+  mqttSend("jugPresent", newState == JUG_STATE_PRESENT ? "true" : "false");
 }
 void handleCoffeeStateChange (String newState) {
   coffeeState = newState;
@@ -136,6 +157,24 @@ bool ledHasBeenOffFor (uint32_t t) {
 }
 bool ledHasFlashed (uint32_t t) {
   return (lightIsOn && lastLightOffTime > 0 && millis() - lastLightOffTime < t) || (!lightIsOn && lastLightOnTime > 0 && millis() - lastLightOnTime < t);
+}
+
+float getCupsRemaining () {
+  if (jugPresent) {
+    return float(currentWeight - referenceWeight) / COFFEE_PORTION_WEIGHT;
+  } else {
+    return float(lastLoadedWeight - referenceWeight) / COFFEE_PORTION_WEIGHT;
+  }
+}
+
+bool weightHasBeenSettledFor (uint32_t t) {
+  return millis() - lastWeightChangeTime > t;
+}
+bool weightHasChangedBy (uint32_t w) {
+  return abs(currentWeight - weightMeasurement) > w;
+}
+bool jugHasBeenGoneFor (uint32_t t) {
+  return jugState != JUG_PRESENT && millis() - lastJugRemovedTime > t;
 }
 
 void handleTick () {
@@ -203,48 +242,6 @@ void initScale () {
   scale.set_scale(SCALE_CALIBRATION);
 }
 
-void handleWeightChange (int32_t newWeight) {
-  int32_t delta = newWeight - currentWeight;
-  if (!jugPresent && delta > COFFEE_JUG_WEIGHT * 0.75)
-  {
-    debugLog("COFFEE", "Jug replaced");
-    handleJugStateChange(JUG_STATE_PRESENT);
-    int32_t loadedDelta = newWeight - lastLoadedWeight;
-    if (abs(loadedDelta) > WEIGHT_CHANGE_THRESHOLD) {
-      handleCoffeeWeightChange(newWeight - referenceWeight);
-    }
-  }
-  else if (jugPresent && delta < -COFFEE_JUG_WEIGHT * 0.75)
-  {
-    debugLog("COFFEE", "Jug removed");
-    handleJugStateChange(JUG_STATE_REMOVED);
-    lastJugRemovedTime = millis();
-    lastLoadedWeight = currentWeight;
-    referenceWeight = newWeight + COFFEE_JUG_WEIGHT;
-  }
-
-  Serial.print("[Coffee] Delta weight:");
-  Serial.println(delta, DEC);
-  currentWeight = newWeight;
-}
-
-void handleJugStateChange (String newState) {
-  mqttSend("jugPresent", newState == JUG_STATE_PRESENT ? "true" : "false");
-  jugState = newState;
-}
-
-void handleCoffeeWeightChange (int32_t newWeight) {
-  mqttSend("coffeeWeight", newWeight);
-}
-
-float getCupsRemaining () {
-  if (jugPresent) {
-    return float(currentWeight - referenceWeight) / COFFEE_PORTION_WEIGHT;
-  } else {
-    return float(lastLoadedWeight - referenceWeight) / COFFEE_PORTION_WEIGHT;
-  }
-}
-
 void saveConfigCallback () {
   debugLog("CONFIG", "Config set by user");
   configChanged = true;
@@ -265,18 +262,6 @@ void mqttSend (String field, String value) {
   payload.toCharArray(buf, 100);
   int rc = client.publish(mqttTopic, buf);
   digitalWrite(LED_BUILTIN, HIGH);
-}
-
-bool weightHasBeenSettledFor (uint32_t t) {
-  return millis() - lastWeightChangeTime > t;
-}
-
-bool weightHasChangedBy (uint32_t w) {
-  return abs(currentWeight - weightMeasurement) > w;
-}
-
-bool jugHasBeenGoneFor (uint32_t t) {
-  return jugState != JUG_PRESENT && millis() - lastJugRemovedTime > t;
 }
 
 bool initConfig () {
@@ -402,6 +387,16 @@ void initWifi (bool forcePortal) {
     WiFi.disconnect();
     return initWifi(true);
   }
+}
+
+void handleServer () {
+  String res;
+  res += "I am a coffee maker.\n";
+  res += "Light measurement is " + String(lightMeasurement) + "\n";
+  res += "My light is " + String(lightIsOn ? "on" : "off") + ".\n";
+  res += "Jug is " + jugState + ".\n";
+  res += (String)"There are " + getCupsRemaining() + " cups of coffee remaining.\n";
+  server.send(200, "text/plain", res);
 }
 
 void initServer () {
