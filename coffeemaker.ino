@@ -10,6 +10,8 @@
 #include <PubSubClient.h> // https://projects.eclipse.org/projects/technology.paho/downloads
 #include <AWSWebSocketClient.h> // https://github.com/odelot/aws-mqtt-websockets
 #include <HX711.h> // https://github.com/bogde/HX711 but delete yield override in hx711.cpp (https://github.com/bogde/HX711/issues/73)
+#include <TimeLib.h> // https://github.com/PaulStoffregen/Time
+#include <NtpClientLib.h> // https://github.com/gmag11/NtpClient
 
 #define REF_PIN 16
 #define SETUP_PIN 14
@@ -156,6 +158,9 @@ void handleJugStateChange (String newState) {
 void handleCoffeeStateChange (String newState) {
   coffeeState = newState;
   mqttSendString("coffee", coffeeState);
+  if (newState == COFFEE_STATE_BREWING) {
+    mqttSendString("lastBrewTime", getDateTimeString());
+  }
 }
 
 bool ledHasBeenOnFor (uint32_t t) {
@@ -431,6 +436,18 @@ void initAWS () {
   awsClient.setUseSSL(true);
 }
 
+String getDateTimeString () {
+  time_t t = now();
+  char str[21];
+  sprintf(str, "%4d-%02d-%02dT%02d:%02d:%02dZ", year(t), month(t), day(t), hour(t), minute(t), second(t));
+  return str;
+}
+
+void initNTP () {
+  NTP.begin("pool.ntp.org", 0, false, 0);
+  NTP.setInterval(60);
+}
+
 bool initMQTT () {
   debugLog("MQTT", "Connecting to MQTT endpoint:");
   debugLog("MQTT", String(mqttServer));
@@ -460,7 +477,10 @@ void setup() {
   initServer();
   initMDNS();
   initAWS();
+  initNTP();
   initMQTT();
+
+  mqttSendString("_lastBootTime", getDateTimeString());
 }
 
 void loop() {
