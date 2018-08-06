@@ -123,8 +123,7 @@ void handleWeightChange (int32_t newWeight) {
     handleReferenceWeightChange(newWeight + COFFEE_JUG_WEIGHT);
   }
 
-  Serial.print("[Coffee] Delta weight:");
-  Serial.println(delta, DEC);
+  debugLog("COFFEE", "Delta weight" + String(delta));
   currentWeight = newWeight;
   mqttSend("_rawWeight", String(currentWeight));
 }
