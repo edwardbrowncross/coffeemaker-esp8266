@@ -9,8 +9,7 @@
 #include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson
 #include <PubSubClient.h> // https://projects.eclipse.org/projects/technology.paho/downloads
 #include <AWSWebSocketClient.h> // https://github.com/odelot/aws-mqtt-websockets
-#define ARDUINO_VERSION 107 // hotfix for https://github.com/bogde/HX711/issues/73
-#include <HX711.h> // https://github.com/bogde/HX711
+#include <HX711.h> // https://github.com/bogde/HX711 but delete yield override in hx711.cpp (https://github.com/bogde/HX711/issues/73)
 
 
 #define REF_PIN 16
