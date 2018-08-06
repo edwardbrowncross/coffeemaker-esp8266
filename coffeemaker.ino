@@ -120,13 +120,16 @@ void handleWeightChange (int32_t newWeight) {
   {
     debugLog("COFFEE", "Jug removed");
     handleJugStateChange(JUG_STATE_REMOVED);
-    lastJugRemovedTime = millis();
-    referenceWeight = newWeight + COFFEE_JUG_WEIGHT;
+    handleReferenceWeightChange(newWeight + COFFEE_JUG_WEIGHT);
   }
 
   Serial.print("[Coffee] Delta weight:");
   Serial.println(delta, DEC);
   currentWeight = newWeight;
+}
+void handleReferenceWeightChange (int32_t newWeight) {
+  referenceWeight = newWeight;
+  mqttSend("_tareWeight", String(newWeight));
 }
 void handleCoffeeWeightChange (int32_t newWeight) {
   coffeeWeight = newWeight;
@@ -136,10 +139,18 @@ void handleCoffeeWeightChange (int32_t newWeight) {
 void handleLEDChange (String newState) {
   lightState = newState;
   mqttSendString("light", lightState);
-  mqttSendString("heaterOn", lightState == LIGHT_STATE_OFF ? "false" : "true");
+  mqttSend("heaterOn", lightState == LIGHT_STATE_OFF ? "false" : "true");
+  if (newState == LIGHT_STATE_ON) {
+    mqttSend("_lightOnValue", String(lightMeasurement));
+  } else if (newState == LIGHT_STATE_OFF) {
+    mqttSend("_lightOffValue", String(lightMeasurement));
+  }
 }
 void handleJugStateChange (String newState) {
   jugState = newState;
+  if (newState == JUG_STATE_REMOVED) {
+    lastJugRemovedTime = millis();
+  }
   mqttSend("jugPresent", newState == JUG_STATE_PRESENT ? "true" : "false");
 }
 void handleCoffeeStateChange (String newState) {
