@@ -81,14 +81,12 @@ HX711 scale(SDA_PIN, SCL_PIN);
 String lastBrewTime;
 String coffeeState = COFFEE_STATE_OFF;
 
-int32_t zeroWeight;
-int32_t referenceWeight;
-int32_t currentWeight;
 int32_t weightMeasurement;
-int32_t lastLoadedWeight;
 uint32_t lastWeightChangeTime;
 uint32_t lastJugRemovedTime;
-uint32_t lastJugReplacedTime;
+int32_t currentWeight;
+int32_t referenceWeight;
+int32_t coffeeWeight;
 String jugState = JUG_STATE_PRESENT;
 
 
@@ -114,9 +112,9 @@ void handleWeightChange (int32_t newWeight) {
   {
     debugLog("COFFEE", "Jug replaced");
     handleJugStateChange(JUG_STATE_PRESENT);
-    int32_t loadedDelta = newWeight - lastLoadedWeight;
-    if (abs(loadedDelta) > WEIGHT_CHANGE_THRESHOLD) {
-      handleCoffeeWeightChange(newWeight - referenceWeight);
+    int32_t newCoffeeWeight = newWeight - referenceWeight;
+    if (abs(newCoffeeWeight - coffeeWeight) > WEIGHT_CHANGE_THRESHOLD) {
+      handleCoffeeWeightChange(newCoffeeWeight);
     }
   }
   else if (jugState == JUG_STATE_PRESENT && delta < -COFFEE_JUG_WEIGHT * 0.75)
@@ -124,7 +122,6 @@ void handleWeightChange (int32_t newWeight) {
     debugLog("COFFEE", "Jug removed");
     handleJugStateChange(JUG_STATE_REMOVED);
     lastJugRemovedTime = millis();
-    lastLoadedWeight = currentWeight;
     referenceWeight = newWeight + COFFEE_JUG_WEIGHT;
   }
 
@@ -133,6 +130,7 @@ void handleWeightChange (int32_t newWeight) {
   currentWeight = newWeight;
 }
 void handleCoffeeWeightChange (int32_t newWeight) {
+  coffeeWeight = newWeight;
   mqttSend("coffeeWeight", String("") + newWeight);
 }
 
@@ -157,14 +155,6 @@ bool ledHasBeenOffFor (uint32_t t) {
 }
 bool ledHasFlashed (uint32_t t) {
   return (lightIsOn && lastLightOffTime > 0 && millis() - lastLightOffTime < t) || (!lightIsOn && lastLightOnTime > 0 && millis() - lastLightOnTime < t);
-}
-
-float getCupsRemaining () {
-  if (jugState == JUG_STATE_PRESENT) {
-    return float(currentWeight - referenceWeight) / COFFEE_PORTION_WEIGHT;
-  } else {
-    return float(lastLoadedWeight - referenceWeight) / COFFEE_PORTION_WEIGHT;
-  }
 }
 
 bool weightHasBeenSettledFor (uint32_t t) {
@@ -395,7 +385,7 @@ void handleServer () {
   res += "Light measurement is " + String(lightMeasurement) + "\n";
   res += "My light is " + String(lightIsOn ? "on" : "off") + ".\n";
   res += "Jug is " + jugState + ".\n";
-  res += (String)"There are " + getCupsRemaining() + " cups of coffee remaining.\n";
+  res += (String)"There are " + String(coffeeWeight) + "g of coffee remaining.\n";
   server.send(200, "text/plain", res);
 }
 
