@@ -11,7 +11,6 @@
 #include <AWSWebSocketClient.h> // https://github.com/odelot/aws-mqtt-websockets
 #include <HX711.h> // https://github.com/bogde/HX711 but delete yield override in hx711.cpp (https://github.com/bogde/HX711/issues/73)
 
-
 #define REF_PIN 16
 #define SETUP_PIN 14
 #define SETUP_REF_PIN 12
@@ -47,7 +46,7 @@
 #define COFFEE_JUG_WEIGHT 250
 #define COFFEE_PORTION_WEIGHT 250
 #define WEIGHT_CHANGE_THRESHOLD 50
-#define WEIGHT_SETTLING_TIME 1000
+#define WEIGHT_SETTLING_TIME 2000
 #define WEIGHT_EASING 0
 
 #define MQTT_PORT 443
@@ -131,12 +130,13 @@ void handleWeightChange (int32_t newWeight) {
 }
 void handleCoffeeWeightChange (int32_t newWeight) {
   coffeeWeight = newWeight;
-  mqttSend("coffeeWeight", String("") + newWeight);
+  mqttSend("coffeeWeight", String(newWeight));
 }
 
 void handleLEDChange (String newState) {
   lightState = newState;
-  mqttSend("light", lightState);
+  mqttSendString("light", lightState);
+  mqttSendString("heaterOn", lightState == LIGHT_STATE_OFF ? "false" : "true");
 }
 void handleJugStateChange (String newState) {
   jugState = newState;
@@ -144,7 +144,7 @@ void handleJugStateChange (String newState) {
 }
 void handleCoffeeStateChange (String newState) {
   coffeeState = newState;
-  mqttSend("coffee", coffeeState);
+  mqttSendString("coffee", coffeeState);
 }
 
 bool ledHasBeenOnFor (uint32_t t) {
@@ -247,11 +247,15 @@ void mqttCallback (char* topic, byte* payload, unsigned int len) {
 
 void mqttSend (String field, String value) {
   digitalWrite(LED_BUILTIN, LOW);
-  String payload = "{\"state\":{\"reported\":{\"" + field + "\":\"" + value + "\"}}}";
+  String payload = "{\"state\":{\"reported\":{\"" + field + "\":" + value + "}}}";
   char buf[100];
   payload.toCharArray(buf, 100);
   int rc = client.publish(mqttTopic, buf);
   digitalWrite(LED_BUILTIN, HIGH);
+}
+
+void mqttSendString (String field, String value) {
+  return mqttSend(field, "\"" + value + "\"");
 }
 
 bool initConfig () {
