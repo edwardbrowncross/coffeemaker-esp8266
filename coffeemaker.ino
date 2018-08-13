@@ -481,6 +481,7 @@ void setup() {
   initMQTT();
 
   mqttSendString("_lastBootTime", getDateTimeString());
+  mqttSendString("_localIP", WiFi.localIP().toString());
 }
 
 void loop() {
