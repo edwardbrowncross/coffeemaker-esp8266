@@ -121,8 +121,11 @@ void handleWeightChange (int32_t newWeight) {
     debugLog("COFFEE", "Jug removed");
     handleJugStateChange(JUG_STATE_REMOVED);
     handleReferenceWeightChange(newWeight + COFFEE_JUG_WEIGHT);
+    int32_t newCoffeeWeight = currentWeight - referenceWeight;
+    if (abs(newCoffeeWeight - coffeeWeight) > WEIGHT_CHANGE_THRESHOLD) {
+      handleCoffeeWeightChange(newCoffeeWeight);
+    }
   }
-
   debugLog("COFFEE", "Delta weight" + String(delta));
   currentWeight = newWeight;
   mqttSend("_rawWeight", String(currentWeight));
@@ -158,6 +161,7 @@ void handleCoffeeStateChange (String newState) {
   mqttSendString("coffee", coffeeState);
   if (newState == COFFEE_STATE_BREWING) {
     mqttSendString("lastBrewTime", getDateTimeString());
+    handleCoffeeWeightChange(currentWeight - referenceWeight);
   }
 }
 
