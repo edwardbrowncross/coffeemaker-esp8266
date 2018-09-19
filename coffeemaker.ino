@@ -128,11 +128,11 @@ void handleWeightChange (int32_t newWeight) {
   }
   debugLog("COFFEE", "Delta weight" + String(delta));
   currentWeight = newWeight;
-  mqttSend("_rawWeight", String(currentWeight));
+  mqttSend("rawWeight", String(currentWeight));
 }
 void handleReferenceWeightChange (int32_t newWeight) {
   referenceWeight = newWeight;
-  mqttSend("_tareWeight", String(newWeight));
+  mqttSend("tareWeight", String(newWeight));
 }
 void handleCoffeeWeightChange (int32_t newWeight) {
   coffeeWeight = newWeight;
@@ -144,9 +144,9 @@ void handleLEDChange (String newState) {
   mqttSendString("light", lightState);
   mqttSend("heaterOn", lightState == LIGHT_STATE_OFF ? "false" : "true");
   if (newState == LIGHT_STATE_ON) {
-    mqttSend("_lightOnValue", String(lightMeasurement));
+    mqttSend("lightOnValue", String(lightMeasurement));
   } else if (newState == LIGHT_STATE_OFF) {
-    mqttSend("_lightOffValue", String(lightMeasurement));
+    mqttSend("lightOffValue", String(lightMeasurement));
   }
 }
 void handleJugStateChange (String newState) {
@@ -479,8 +479,8 @@ void setup() {
   initNTP();
   initMQTT();
 
-  mqttSendString("_lastBootTime", getDateTimeString());
-  mqttSendString("_localIP", WiFi.localIP().toString());
+  mqttSendString("lastBootTime", getDateTimeString());
+  mqttSendString("localIP", WiFi.localIP().toString());
 }
 
 void loop() {
