@@ -45,6 +45,7 @@
 #define SCALE_CALIBRATION -22.75
 #define COFFEE_JUG_WEIGHT 330
 #define COFFEE_PORTION_WEIGHT 200
+#define COFFEE_FULL_WEIGHT 1200
 #define WEIGHT_CHANGE_THRESHOLD 60
 #define WEIGHT_SETTLING_TIME 2000
 #define WEIGHT_EASING 0
@@ -161,7 +162,8 @@ void handleCoffeeStateChange (String newState) {
   mqttSendString("coffee", coffeeState);
   if (newState == COFFEE_STATE_BREWING) {
     mqttSendString("lastBrewTime", getDateTimeString());
-    handleCoffeeWeightChange(currentWeight - referenceWeight);
+    handleReferenceWeightChange(currentWeight - COFFEE_FULL_WEIGHT);
+    handleCoffeeWeightChange(COFFEE_FULL_WEIGHT);
   }
 }
 
