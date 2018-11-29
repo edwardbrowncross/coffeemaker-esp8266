@@ -7,7 +7,7 @@
 #include <ESP8266mDNS.h>
 #include <WiFiManager.h> // https://github.com/tzapu/WiFiManager
 #include <ArduinoJson.h> // https://github.com/bblanchon/ArduinoJson
-#include <PubSubClient.h> // https://projects.eclipse.org/projects/technology.paho/downloads
+#include <PubSubClient.h> // https://github.com/knolleary/pubsubclient
 #include <AWSWebSocketClient.h> // https://github.com/odelot/aws-mqtt-websockets
 #include <HX711.h> // https://github.com/bogde/HX711 but delete yield override in hx711.cpp (https://github.com/bogde/HX711/issues/73)
 #include <TimeLib.h> // https://github.com/PaulStoffregen/Time
@@ -356,7 +356,7 @@ bool saveConfig () {
 void initWifi (bool forcePortal) {
   debugLog("WIFI", "Attempting to start WIFI");
   WiFiManagerParameter custMQTT("MQTT Server", "MQTT Server", mqttServer, 51);
-  WiFiManagerParameter custTopic("MQTT Topci", "MQTT Topic", mqttTopic, 66);
+  WiFiManagerParameter custTopic("MQTT Topic", "MQTT Topic", mqttTopic, 66);
   WiFiManagerParameter custAWSID("AWS Access Key ID", "AWS Access Key ID", awsKeyID, 21);
   WiFiManagerParameter custAWSSec("AWS Secret Access Key", "AWS Secret Access Key", awsSecret, 41);
   WiFiManagerParameter custAWSReg("AWS Region", "AWS Region", awsRegion, 11);
