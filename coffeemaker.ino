@@ -502,7 +502,7 @@ void loop() {
   weightMeasurement = (weightMeasurement*WEIGHT_EASING + w) / (WEIGHT_EASING + 1);
 
   if (WiFi.status() != WL_CONNECTED){
-    initWifi();
+    initWifi(false);
   }
 
   server.handleClient();
