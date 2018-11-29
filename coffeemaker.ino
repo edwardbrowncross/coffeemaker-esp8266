@@ -13,9 +13,7 @@
 #include <TimeLib.h> // https://github.com/PaulStoffregen/Time
 #include <NtpClientLib.h> // https://github.com/gmag11/NtpClient
 
-#define REF_PIN 16
-#define SETUP_PIN 14
-#define SETUP_REF_PIN 12
+#define SETUP_PIN 0
 #define SDA_PIN 4
 #define SCL_PIN 5
 
@@ -44,7 +42,7 @@
 #define JUG_CLEANING_TIME 120000
 #define JUG_CLEANING_TIMEOUT 300000
 
-#define SCALE_CALIBRATION 22.75
+#define SCALE_CALIBRATION -22.75
 #define COFFEE_JUG_WEIGHT 250
 #define COFFEE_PORTION_WEIGHT 250
 #define WEIGHT_CHANGE_THRESHOLD 50
@@ -237,10 +235,6 @@ void handleTick () {
 void initPins () {
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, HIGH);
-  pinMode(REF_PIN, OUTPUT);
-  digitalWrite(REF_PIN, HIGH);
-  pinMode(SETUP_REF_PIN, OUTPUT);
-  digitalWrite(SETUP_REF_PIN, LOW);
   pinMode(SETUP_PIN, INPUT_PULLUP);
 }
 
@@ -472,6 +466,7 @@ void setup() {
   initPins();
   initScale();
   bool configLoaded = initConfig();
+  delay(3000);
   bool forceConfig = (digitalRead(SETUP_PIN) == LOW);
   initWifi(forceConfig || !configLoaded);
   initServer();
