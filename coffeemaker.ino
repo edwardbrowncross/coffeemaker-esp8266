@@ -202,7 +202,7 @@ void handleTick () {
   if (coffeeState == COFFEE_STATE_OFF) {
     if (lightState == LIGHT_STATE_ON) {
       handleCoffeeStateChange(COFFEE_STATE_BREWING);
-    } else if (jugHasBeenGoneFor(JUG_CLEANING_TIME)) {
+    } else if (jugHasBeenGoneFor(JUG_CLEANING_TIME) && !jugHasBeenGoneFor(JUG_CLEANING_TIMEOUT)) {
       handleCoffeeStateChange(COFFEE_STATE_PREPARING);
     }
   } else if (coffeeState == COFFEE_STATE_BREWING) {
